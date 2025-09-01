@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "artifact-store"
+version = "0.1.0"
+description = "A tool for storing and retrieving articafts to a local filesystem backend storage."
+authors = [
+  { name = "Patrick Boettcher", email = "p@yai.se" }
+]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = []
+
+# This makes `mytool` available on the command line
+[project.scripts]
+artifact-store = "artifact_store.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+# Makes pytest run cleanly and find tests
+minversion = "7.0"
+addopts = "-ra -q --cov=src --cov=tests --cov-report=term-missing"
+testpaths = ["tests"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "pyfakefs",
+    "black",
+    "flake8",
+]

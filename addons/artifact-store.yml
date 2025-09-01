@@ -1,0 +1,23 @@
+# variable to be defined by the user on the derived job:
+#  PROJECT_PATH: <namespace>/<repo_name>, could be $CI_PROJECT_PATH
+#  LOCAL_ARTIFACTS_DIR: <local_path>, path which will be packaged and deployed
+#  PACKAGE_NAME: <name>, name of the package to be deployed
+ #  PACKAGE_NAME: <name>, name of the package to be deployed
+variables:
+  ARTIFACT_STORAGE_ROOT: /home/nas/shared/gitlab-artifact-storage
+
+
+.deploy_artifact:
+  script:
+    - $ARTIFACT_STORAGE_ROOT/scripts/artifact-storage.py -v --project  "$PROJECT_PATH"
+                          store --latest -v $CI_COMMIT_SHORT
+                                -m "gitlab-url=$CI_PROJECT_NAME"
+                                -m "gitlab-sha1=$CI_COMMIT_SHA"
+                                -m "package-name=$PACKAGE_NAME"
+                                "$PACKAGE_NAME" "$LOCAL_ARTIFACTS_DIR"
+
+.retrieve_artifact:
+  script:
+    - $ARTIFACT_STORAGE_ROOT/scripts/artifact-storage.py -v --project "$PROJECT_PATH"
+                          retrieve --latest "$PACKAGE_NAME" "$LOCAL_ARTIFACTS_DIR"
+    - cat $LOCAL_ARTIFACTS_DIR/$PACKAGE_NAME/.artifact-meta || true
