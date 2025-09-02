@@ -3,6 +3,10 @@
 
 name: Python package
 
+permissions:
+  contents: read
+  pull-requests: write
+
 on:
   push:
     branches: [ "main" ]
@@ -37,4 +41,10 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        pytest
+        pytest --cov-report xml
+    - name: Get Coverage
+      if: ${{ matrix.python-version == '3.13' }}
+      uses: orgoro/coverage@v3.2
+      with:
+        coverageFile: coverage.xml
+        token: ${{ secrets.GITHUB_TOKEN }}
