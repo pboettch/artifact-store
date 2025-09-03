@@ -50,7 +50,7 @@ artifact-store init
 Once initialized, artifacts can be stored via
 
 ```bash
-artifact-store store --revision <rev> --tag <tag> <namespace> <artifact-name> <paths...>
+artifact-store store --revision <rev> --tag <tag> <namespace> <artifact-name> <paths/glob...>
 ```
 
 and retrieved via
