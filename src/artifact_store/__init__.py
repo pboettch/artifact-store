@@ -1,5 +1,7 @@
 import json
 
+__version__ = "0.1.0"
+
 
 class ArtifactMetaData:
     """Class to handle metadata for artifacts."""
