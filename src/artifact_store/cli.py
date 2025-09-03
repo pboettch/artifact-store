@@ -1,5 +1,6 @@
 import argparse
 import fnmatch
+import glob
 import lzma
 import os
 import sys
@@ -75,15 +76,10 @@ def store(args):
     check_artifact_store(args.storage_root)
 
     vprint(f"Storing artifact '{args.name}'")
-    vprint(f"  located at '{args.location}'")
-    vprint(f"  setting revision '{args.revision}'")
+    vprint(f"  with globs: '{args.glob}'")
+    vprint(f"  setting revision: '{args.revision}'")
     vprint(f"  linking tag: {args.tag}")
     vprint(f"  copying files: {args.copy}")
-
-    # check all locations are valid
-    for location in args.location:
-        if not location.exists():
-            fatal(f"Location '{args.location}' is not a valid path. Please provide a valid file or directory path.")
 
     package_path = artifact_path(args.storage_root, args.namespace)
     vprint(f"  package path: '{package_path}'")
@@ -115,15 +111,22 @@ def store(args):
     if args.copy:
         raise NotImplementedError("Copying files is not implemented yet.")
     else:
-        archive = artifact_location.with_suffix(".tar.xz")
+        archive = artifact_location.with_suffix(".tar.xz")  # no check needed - checked above
+
+        # Expand all include globs
+        paths = set()
+        for pattern in args.glob:
+            vprint(f"  processing glob: '{pattern}'")
+            paths.update(glob.glob(pattern, recursive=True))
+            vprint(f"  after {paths}'")
 
         vprint(f"Creating tarball: {archive}, metadata: {meta_filename}")
         # Create a tarball of the specified location
         with lzma.open(archive, "wb", preset=2) as xz:  # preset = 0..9
             with tarfile.open(fileobj=xz, mode="w") as tar:
-                for location in args.location:
-                    tar.add(location,
-                            arcname=".",  # Add the directory or file to the tarball without the path
+                for f in paths:
+                    print(f"Adding '{f}' to archive")
+                    tar.add(f,
                             filter=partial(tar_filter, args.exclude) if args.exclude else None)
 
         vprint(f"Tarball created: {archive}")
@@ -198,16 +201,17 @@ def main(argv=None):
     # Subcommand: store
     parser_store = subparsers.add_parser("store", help="Store file/directory as artifact")
     parser_store.add_argument("-t", "--tag", type=str, help="tag artifact with a tag name (e.g. latest)")
-    parser_store.add_argument("-r", "--revision", type=str, help="revision/unique-id of artifact")
+    parser_store.add_argument("-r", "--revision", type=str, required=True, help="revision/unique-id of artifact")
     parser_store.add_argument("-c", "--copy", action="store_true", default=False,
                               help="copy files instead of creating a tar-package")
     parser_store.add_argument("-m", "--meta", action="append", help="Key-value pairs like key=value for metadata"
                                                                     "added to the artifact")
-    parser_store.add_argument("-e", "--exclude", action="append", help="a glob of directories or files to be excluded")
+    parser_store.add_argument("-e", "--exclude", action="append", default=[],
+                              help="a glob of directories or files to be excluded")
 
     parser_store.add_argument("namespace", type=str, help="namespace of the artifact")
     parser_store.add_argument("name", type=str, help="name of artifact")
-    parser_store.add_argument("location", type=Path, nargs='+', help="local files or directories to store")
+    parser_store.add_argument("glob", type=str, nargs='+', help="globs for files and directories to store")
 
     parser_store.set_defaults(func=store)
 

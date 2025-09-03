@@ -14,6 +14,24 @@ def init_fs(fs, monkeypatch):
     fs.create_dir("/data")
     fs.create_file("/data/artifact1", contents="This is artifact 1")
 
+    fs.create_file("/data/file.txt")
+    fs.create_file("/data/file.md")
+
+    fs.create_dir("/data/a")
+    fs.create_file("/data/a/file.txt")
+    fs.create_file("/data/a/file.md")
+    fs.create_dir("/data/a/a")
+    fs.create_file("/data/a/a/file.txt")
+    fs.create_file("/data/a/a/file.md")
+    fs.create_dir("/data/a/a/a")
+    fs.create_file("/data/a/a/a/file.md")
+    fs.create_dir("/data/a/b")
+    fs.create_file("/data/a/b/file.md")
+
+    fs.create_dir("/data/b")
+    fs.create_file("/data/b/file.txt")
+    fs.create_file("/data/b/file.md")
+
     main(["init"])
 
     return fs
@@ -29,8 +47,8 @@ def test_cli_store_one_artifact_roundtrip(init_fs):
     assert os.path.isfile(expected_meta_filename)
 
     tar = tarfile.open(expected_filename)
-    assert tar.getnames() == [".", "./artifact1"]
-    f = tar.extractfile("./artifact1")
+    assert len(tar.getnames()) == 17
+    f = tar.extractfile("data/artifact1")
     assert f.read() == b"This is artifact 1"
 
 
@@ -145,49 +163,45 @@ def test_cli_store_artifact_already_exists(init_fs):
 
 
 def test_cli_store_exclude_patterns(init_fs):
-    init_fs.create_file("/data/file.txt")
-    init_fs.create_file("/data/file.md")
-
-    init_fs.create_dir("/data/a")
-    init_fs.create_file("/data/a/file.txt")
-    init_fs.create_file("/data/a/file.md")
-    init_fs.create_dir("/data/a/a")
-    init_fs.create_file("/data/a/a/file.txt")
-    init_fs.create_file("/data/a/a/file.md")
-    init_fs.create_dir("/data/a/a/a")
-    init_fs.create_file("/data/a/a/a/file.md")
-    init_fs.create_dir("/data/a/b")
-    init_fs.create_file("/data/a/b/file.md")
-
-    init_fs.create_dir("/data/b")
-    init_fs.create_file("/data/b/file.txt")
-    init_fs.create_file("/data/b/file.md")
-
-    main(['-v', "store",
+    main(["store",
           "-r", "1",
           "--exclude", "*file.txt",  # exclude all file.txt
-          "--exclude", "./artifact1",  # exclude default created artifact-test-file
+          "--exclude", "data/artifact1",  # exclude default created artifact-test-file
           "--exclude", "*/a/**/file.md",  # exclude all file.md in a/ and subdirs
           "project", "artifact1", "/data"])
 
     expected_filename = "/artifact-store/project/artifacts/artifact1-1.tar.xz"
-    assert os.path.isfile(expected_filename)
-
     tar = tarfile.open(expected_filename)
     print(sorted(tar.getnames()))
-    assert sorted(tar.getnames()) == [".",
-                                      "./a",
-                                      "./a/a",
-                                      "./a/a/a",
-                                      "./a/b",
-                                      "./a/file.md",
-                                      "./b",
-                                      "./b/file.md",
-                                      "./file.md",
+    assert sorted(tar.getnames()) == ["data",
+                                      "data/a",
+                                      "data/a/a",
+                                      "data/a/a/a",
+                                      "data/a/b",
+                                      "data/a/file.md",
+                                      "data/b",
+                                      "data/b/file.md",
+                                      "data/file.md",
                                       ]
 
 
-def test_cli_store_invalid_location(fs, monkeypatch):
+def test_cli_store_path_globs(init_fs):
+    main(["store",
+          "-r", "1",
+          "project", "artifact1", "data/**/file.md"])
+
+    expected_filename = "/artifact-store/project/artifacts/artifact1-1.tar.xz"
+    tar = tarfile.open(expected_filename)
+
+    assert sorted(tar.getnames()) == ['data/a/a/a/file.md',
+                                      'data/a/a/file.md',
+                                      'data/a/b/file.md',
+                                      'data/a/file.md',
+                                      'data/b/file.md',
+                                      'data/file.md']
+
+
+def test_cli_store_error_out_if_empty(fs, monkeypatch):
     monkeypatch.setenv("ARTIFACT_STORE_ROOT", "/artifact-store")
 
     main(["init"])

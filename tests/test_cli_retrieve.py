@@ -19,7 +19,7 @@ def init_fs(fs, monkeypatch):
 def test_cli_retrieve_artifact_with_revision_and_check_content(init_fs):
     main(["retrieve", "-r", "1", "project/a", "artifact1", "/retrieved"])
 
-    with open("/retrieved/artifact1/file.txt", "r") as f:
+    with open("/retrieved/artifact1/data/file.txt", "r") as f:
         content = f.read()
     assert content == "This is artifact 1"
 
@@ -27,7 +27,7 @@ def test_cli_retrieve_artifact_with_revision_and_check_content(init_fs):
 def test_cli_retrieve_artifact_with_tag_and_check_content(init_fs):
     main(["retrieve", "-t", "latest", "project/a", "artifact1", "/retrieved"])
 
-    with open("/retrieved/artifact1/file.txt", "r") as f:
+    with open("/retrieved/artifact1/data/file.txt", "r") as f:
         content = f.read()
     assert content == "This is artifact 1"
 
