@@ -3,9 +3,10 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "artifact-store"
+name = "artifact-filesystem-store"
 version = "0.1.0"
-description = "A tool for storing and retrieving articafts to a local filesystem backend storage."
+description = "A tool for storing and retrieving artifacts to a local filesystem backend storage."
+urls = { "Homepage" = "https://github.com/pboettch/artifact-store" }
 authors = [
   { name = "Patrick Boettcher", email = "p@yai.se" }
 ]

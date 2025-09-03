@@ -1,6 +1,8 @@
-# Artifact Store
+![test-workflow](https://github.com/pboettch/artifact-store/actions/workflows/python-package.yml/badge.svg)
 
-Tools for storing and retrieving artifacts (files and folders) on a locally accessible filesytem path.
+# Artifact Filesystem Store
+
+Tools for storing and retrieving artifacts (files and folders) on a locally accessible filesystem path.
 
 ## Features and Concepts
 
