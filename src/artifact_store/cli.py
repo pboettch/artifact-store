@@ -170,7 +170,7 @@ def retrieve(args):
     vprint(f"  found archive: {archive}")
 
     # Ensure the target directory exists
-    location = args.location / args.name
+    location = args.location
     location.mkdir(parents=True, exist_ok=True)
     vprint(f"  extracting to: {location}")
 
