@@ -71,6 +71,14 @@ def tar_filter(exclude_globs, tarinfo):
     return tarinfo
 
 
+def _tag(tag_link: Path, archive: Path):
+    tag_link.parent.mkdir(parents=True, exist_ok=True)
+    vprint(f"Linking tag: '{tag_link}' to '{archive}'")
+    if tag_link.is_symlink() or tag_link.exists():
+        tag_link.unlink()
+    tag_link.symlink_to(archive)
+
+
 def store(args):
     """Store a file or directory as an artifact."""
     check_artifact_store(args.storage_root)
@@ -136,12 +144,7 @@ def store(args):
             metafile.write(str(meta))
 
     if args.tag:
-        tag_link = tag_path(args.storage_root, args.namespace) / f"{args.name}-{args.tag}"
-        tag_link.parent.mkdir(parents=True, exist_ok=True)
-        vprint(f"Linking tag: '{tag_link}' to '{archive}'")
-        if tag_link.is_symlink() or tag_link.exists():
-            tag_link.unlink()
-        tag_link.symlink_to(archive)
+        _tag(tag_path(args.storage_root, args.namespace) / f"{args.name}-{args.tag}", archive)
 
 
 def retrieve(args):
@@ -180,6 +183,35 @@ def retrieve(args):
             tar.extractall(path=location, filter='fully_trusted')
         else:
             tar.extractall(path=location)
+
+
+def tag(args):
+    """Tag an existing artifact with a new tag."""
+    check_artifact_store(args.storage_root)
+
+    vprint(f"Tagging artifact '{args.name}'")
+    vprint(f"  with new tag: '{args.new_tag}'")
+
+    archive = None
+    if args.revision:
+        vprint(f"  tagging revision: {args.revision}")
+        archive = artifact_path(args.storage_root, args.namespace) / f"{args.name}-{args.revision}.tar.xz"
+
+    if args.tag:
+        vprint(f"  tagging tag: {args.tag}")
+        tag_link = tag_path(args.storage_root, args.namespace) / f"{args.name}-{args.tag}"
+        if not tag_link.is_symlink():
+            fatal(f"Tagged artifact '{tag_link}' is not a symlink, cannot retag.")
+        archive = tag_link.resolve()
+
+    vprint(f"  archive location: '{archive}'")
+
+    if archive is None or not archive.is_file():
+        fatal(f"Artifact '{archive}' does not exist.")
+    vprint(f"  found archive: {archive}")
+
+    # Create the new tag
+    _tag(tag_path(args.storage_root, args.namespace) / f"{args.name}-{args.new_tag}", archive)
 
 
 def main(argv=None):
@@ -227,6 +259,18 @@ def main(argv=None):
     parser_retrieve.add_argument("location", type=Path, help="local directory location to retrieve to")
 
     parser_retrieve.set_defaults(func=retrieve)
+
+    # Subcommand: tag
+    parser_tag = subparsers.add_parser("tag", help="Tag an existing artifact with a new tag")
+    group = parser_tag.add_mutually_exclusive_group(required=True)
+    group.add_argument("-t", "--tag", type=str, help="tag artifact with a tag name (e.g. latest)")
+    group.add_argument("-r", "--revision", type=str, help="revision/unique-id of artifact to tag")
+
+    parser_tag.add_argument("namespace", type=str, help="namespace of the artifact")
+    parser_tag.add_argument("name", type=str, help="name of artifact")
+    parser_tag.add_argument("new_tag", type=str, help="new tag name to assign to the artifact")
+
+    parser_tag.set_defaults(func=tag)
 
     args = parser.parse_args(argv)
     global _verbose

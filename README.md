@@ -36,7 +36,7 @@ Scripts for CMake and GitHub/GitLab Actions are provided to use the artifact-sto
 After installing the project (see below), the command line tool `artifact-store` is available.
 
 A storage root must be provided via the environment variable `ARTIFACT_STORE_ROOT` or
-via the argument `--storage-root`. Before using the a storage root, it must be initialized
+via the argument `--storage-root`. Before using a storage root, it must be initialized
 via 
 
 ```bash
@@ -44,6 +44,7 @@ artifact-store --storage-root <path> init
 ```
 
 or 
+
 ```bash
 export ARTIFACT_STORE_ROOT=<path>
 artifact-store init
@@ -68,6 +69,21 @@ artifact-store retrieve --tag <tag> <namespace> <artifact-name> <target-path>
 ```
 
 for tags.
+
+
+The command
+
+```bash
+artifact-store tag --tag <tag> <namespace> <artifact-name> <new_tag>
+```
+
+or
+
+```bash
+artifact-store tag --revision <revision> <namespace> <artifact-name> <tag>
+```
+
+can be used to assign tags to revisions or create new tags from existing ones.
 
 ## Development
 
