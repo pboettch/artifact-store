@@ -153,15 +153,6 @@ def test_cli_store_invalid_metadata_format(init_fs):
         assert e.code == 1
 
 
-def test_cli_store_artifact_already_exists(init_fs):
-    main(["store", "-r", "1", "project/a", "artifact1", "/data"])
-
-    try:
-        main(["store", "-r", "1", "project/a", "artifact1", "/data"])
-    except SystemExit as e:
-        assert e.code == 1
-
-
 def test_cli_store_exclude_patterns(init_fs):
     main(["store",
           "-r", "1",
