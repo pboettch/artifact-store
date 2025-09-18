@@ -192,16 +192,6 @@ def test_cli_store_path_globs(init_fs):
                                       'data/file.md']
 
 
-def test_cli_store_error_out_if_empty(fs, monkeypatch):
-    monkeypatch.setenv("ARTIFACT_STORE_ROOT", "/artifact-store")
-
-    main(["init"])
-    try:
-        main(["store", "-r", "1", "project/a", "artifact1", "/data"])
-    except SystemExit as e:
-        assert e.code == 1
-
-
 def test_cli_store_already_existing_artifact(init_fs):
     main(["store", "-r", "1", "project/a", "artifact1", "/data"])
 

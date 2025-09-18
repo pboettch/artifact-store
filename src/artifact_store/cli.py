@@ -72,11 +72,37 @@ def tar_filter(exclude_globs, tarinfo):
 
 
 def _tag(tag_link: Path, archive: Path):
+    """Helper function to create a tag symlink to the given archive."""
     tag_link.parent.mkdir(parents=True, exist_ok=True)
     vprint(f"Linking tag: '{tag_link}' to '{archive}'")
     if tag_link.is_symlink() or tag_link.exists():
         tag_link.unlink()
     tag_link.symlink_to(archive)
+
+
+def _get_archive_path(args):
+    """Helper function to get the archive path based on args."""
+    check_artifact_store(args.storage_root)
+
+    archive = None
+    if args.revision:
+        vprint(f"  retrieving revision: {args.revision}")
+        archive = artifact_path(args.storage_root, args.namespace) / f"{args.name}-{args.revision}.tar.xz"
+
+    if args.tag:
+        vprint(f"  retrieving tag: {args.tag}")
+        tag_link = tag_path(args.storage_root, args.namespace) / f"{args.name}-{args.tag}"
+        if not tag_link.is_symlink():
+            fatal(f"Tagged artifact '{tag_link}' is not a symlink, cannot retrieve.")
+        archive = tag_link.resolve()
+
+    vprint(f"  archive location: '{archive}'")
+
+    if archive is None or not archive.is_file():
+        fatal(f"Artifact '{archive}' does not exist.")
+    vprint(f"  found archive: {archive}")
+
+    return archive
 
 
 def store(args):
@@ -149,28 +175,11 @@ def store(args):
 
 def retrieve(args):
     """Retrieve an artifact by name and version or tag."""
-    check_artifact_store(args.storage_root)
 
     vprint(f"Retrieving artifact '{args.name}'")
     vprint(f"  to location '{args.location}'")
 
-    archive = None
-    if args.revision:
-        vprint(f"  retrieving revision: {args.revision}")
-        archive = artifact_path(args.storage_root, args.namespace) / f"{args.name}-{args.revision}.tar.xz"
-
-    if args.tag:
-        vprint(f"  retrieving tag: {args.tag}")
-        tag_link = tag_path(args.storage_root, args.namespace) / f"{args.name}-{args.tag}"
-        if not tag_link.is_symlink():
-            fatal(f"Tagged artifact '{tag_link}' is not a symlink, cannot retrieve.")
-        archive = tag_link.resolve()
-
-    vprint(f"  archive location: '{archive}'")
-
-    if archive is None or not archive.is_file():
-        fatal(f"Artifact '{archive}' does not exist.")
-    vprint(f"  found archive: {archive}")
+    archive = _get_archive_path(args)
 
     # Ensure the target directory exists
     location = args.location
@@ -187,28 +196,11 @@ def retrieve(args):
 
 def tag(args):
     """Tag an existing artifact with a new tag."""
-    check_artifact_store(args.storage_root)
 
     vprint(f"Tagging artifact '{args.name}'")
     vprint(f"  with new tag: '{args.new_tag}'")
 
-    archive = None
-    if args.revision:
-        vprint(f"  tagging revision: {args.revision}")
-        archive = artifact_path(args.storage_root, args.namespace) / f"{args.name}-{args.revision}.tar.xz"
-
-    if args.tag:
-        vprint(f"  tagging tag: {args.tag}")
-        tag_link = tag_path(args.storage_root, args.namespace) / f"{args.name}-{args.tag}"
-        if not tag_link.is_symlink():
-            fatal(f"Tagged artifact '{tag_link}' is not a symlink, cannot retag.")
-        archive = tag_link.resolve()
-
-    vprint(f"  archive location: '{archive}'")
-
-    if archive is None or not archive.is_file():
-        fatal(f"Artifact '{archive}' does not exist.")
-    vprint(f"  found archive: {archive}")
+    archive = _get_archive_path(args)
 
     # Create the new tag
     _tag(tag_path(args.storage_root, args.namespace) / f"{args.name}-{args.new_tag}", archive)
