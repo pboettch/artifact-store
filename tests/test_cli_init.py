@@ -44,8 +44,9 @@ def test_cli_no_command(fs):
     except SystemExit as e:
         assert e.code == 2
 
+
 def test_verbose_flag(fs, capsys):
     main(["-s", "/artifact-store", "-v", "init"])
     captured = capsys.readouterr()
     assert captured.err == "Initializing artifact store at '/artifact-store'\n" \
-           "Artifact store initialized at '/artifact-store'\n"
+                           "Artifact store initialized at '/artifact-store'\n"

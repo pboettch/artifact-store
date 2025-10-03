@@ -303,11 +303,11 @@ def main(argv=None):
     group.add_argument("-t", "--tag", type=str, help="tag artifact with a tag name (e.g. latest)")
     group.add_argument("-r", "--revision", type=str, help="revision/unique-id of artifact to tag")
 
-    parser_meta.add_argument("-H", "--show-hidden", action="store_true", help="show hidden metadata " \
+    parser_meta.add_argument("-H", "--show-hidden", action="store_true", help="show hidden metadata "
                                                                               "keys (starting with __)")
     parser_meta.add_argument("namespace", type=str, help="namespace of the artifact")
     parser_meta.add_argument("name", type=str, help="name of artifact")
-    parser_meta.add_argument("key_value", type=str, nargs='*', help="set, replace or delete metadata key-value pairs" \
+    parser_meta.add_argument("key_value", type=str, nargs='*', help="set, replace or delete metadata key-value pairs"
                                                                     "like key=value or key= (to delete)")
 
     parser_meta.set_defaults(func=meta)
