@@ -99,6 +99,34 @@ Create a virtual environment and install the dependencies:
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .[dev]
-``` 
+```
 
 This installs the development dependencies, including `pytest` for running the tests.
+
+## Releases
+
+First bump the version with `bumpver`: e.g.:
+
+```bash
+bumpver patch # or 'minor' or 'major'
+```
+
+then push the changes and tag:
+
+```bash
+git push && git push --tags
+``` 
+
+package:
+
+```bash
+python3 -m build --wheel
+```
+
+and upload to PyPI:
+
+```bash
+python3 -m twine upload dist/*
+```
+
+See also: https://packaging.python.org/en/latest/guides/distributing-packages-using-setuptools/
