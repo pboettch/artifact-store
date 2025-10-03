@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Dict, Optional, Tuple, Union
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 
 class ArtifactMetaData:
