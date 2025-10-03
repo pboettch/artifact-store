@@ -1,7 +1,9 @@
-import pytest
 import os
 
+import pytest
+
 from artifact_store.cli import main
+
 
 @pytest.fixture
 def init_fs(fs, monkeypatch):
