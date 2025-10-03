@@ -31,10 +31,7 @@ class ArtifactMetaData:
             raise ValueError(f"Invalid metadata format '{kv}', expected key=value")
         key, value = kv.split('=', 1)
         if value == '':
-            if key in self.meta:
-                del self.meta[key]
-            else:
-                raise KeyError(f"Key '{key}' not found in metadata")
+            self.meta.pop(key, None)
             return None, None
         else:
             self.add(key, value)

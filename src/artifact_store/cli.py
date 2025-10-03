@@ -236,8 +236,6 @@ def meta(args):
             vprint(f"  handled: '{item}' -> '{key}' = '{value}'")
         except ValueError as e:
             fatal(e)
-        except KeyError as e:
-            fatal(e)
 
     print(meta.dump(show_hidden=args.show_hidden))
     meta.save(meta_file)

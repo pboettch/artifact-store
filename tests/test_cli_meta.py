@@ -116,7 +116,10 @@ def test_cll_meta_invaled_key(init_fs):
     assert e.value.code == 1
 
 
-def test_cli_meta_delete_unknown_key(init_fs):
-    with pytest.raises(SystemExit) as e:
-        main(["meta", "-r", "1", "project/a", "artifact1", "unknownkey="])
-    assert e.value.code == 1
+def test_cli_meta_delete_unknown_key(init_fs, capsys):
+    main(["meta", "-r", "1", "project/a", "artifact1", "unknownkey="])
+    captured = capsys.readouterr()
+    assert captured.out.strip() == """{
+  "a": "1",
+  "b": "test"
+}"""
