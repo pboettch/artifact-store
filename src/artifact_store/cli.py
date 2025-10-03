@@ -80,29 +80,37 @@ def _tag(tag_link: Path, archive: Path):
     tag_link.symlink_to(archive)
 
 
-def _get_archive_path(args):
-    """Helper function to get the archive path based on args."""
+def _get_artifact_location(args, use_tag=True) -> Path:
+    """Helper function to get the artifact path based on args."""
     check_artifact_store(args.storage_root)
 
-    archive = None
+    path = None
     if args.revision:
         vprint(f"  retrieving revision: {args.revision}")
-        archive = artifact_path(args.storage_root, args.namespace) / f"{args.name}-{args.revision}.tar.xz"
+        path = artifact_path(args.storage_root, args.namespace) / f"{args.name}-{args.revision}"
 
-    if args.tag:
+    if use_tag and args.tag:
         vprint(f"  retrieving tag: {args.tag}")
         tag_link = tag_path(args.storage_root, args.namespace) / f"{args.name}-{args.tag}"
         if not tag_link.is_symlink():
             fatal(f"Tagged artifact '{tag_link}' is not a symlink, cannot retrieve.")
         archive = tag_link.resolve()
+        path = archive.with_suffix('')  # remove .tar.xz suffix, if it was an archive
 
-    vprint(f"  archive location: '{archive}'")
+    vprint(f"  artifact location: '{path}'")
+    vprint(f"  identified artifact location: {path}")
 
-    if archive is None or not archive.is_file():
-        fatal(f"Artifact '{archive}' does not exist.")
-    vprint(f"  found archive: {archive}")
+    return path
 
-    return archive
+
+def _get_meta_data_path(args, use_tag=True) -> Path:
+    """Helper function to get the metadata path based on args."""
+    return _get_artifact_location(args, use_tag=use_tag).with_suffix('.meta.json')
+
+
+def _get_archive_path(args, use_tag=True) -> Path:
+    """Helper function to get the archive path based on args."""
+    return _get_artifact_location(args, use_tag=use_tag).with_suffix('.tar.xz')
 
 
 def store(args):
@@ -115,14 +123,8 @@ def store(args):
     vprint(f"  linking tag: {args.tag}")
     vprint(f"  copying files: {args.copy}")
 
-    package_path = artifact_path(args.storage_root, args.namespace)
-    vprint(f"  package path: '{package_path}'")
-
-    # location of the artifact - either an archive or a directory
-    artifact_location = package_path / f"{args.name}-{args.revision}"
-
     # metadata file location
-    meta_filename = artifact_location.with_suffix(".meta.json")
+    meta_filename = _get_meta_data_path(args, use_tag=False)
     if meta_filename.is_file():
         fatal(f"Metadata file '{meta_filename}' already exists, fatal - exiting.")
 
@@ -132,14 +134,15 @@ def store(args):
 
     if args.meta:
         for item in args.meta:
-            if '=' not in item:
-                fatal(f"Invalid metadata format '{item}', expected key=value")
-            key, value = item.split('=', 1)
-            vprint(f"  adding metadata: {key}={value}")
-            meta.add(key, value)
+            try:
+                key, value = meta.add_kv_string(item)
+                vprint(f"  add: '{item}' -> '{key}' = '{value}'")
+            except ValueError as e:
+                fatal(e)
 
     # Ensure the package directory exists
-    package_path.mkdir(parents=True, exist_ok=True)
+    artifact_location = _get_artifact_location(args, use_tag=False)
+    artifact_location.parent.mkdir(parents=True, exist_ok=True)
 
     # tar or copy files
     if args.copy:
@@ -166,8 +169,7 @@ def store(args):
         vprint(f"Tarball created: {archive}")
 
         # Add metadata next to the tarball
-        with open(meta_filename, mode="w") as metafile:
-            metafile.write(str(meta))
+        meta.save(meta_filename)
 
     if args.tag:
         _tag(tag_path(args.storage_root, args.namespace) / f"{args.name}-{args.tag}", archive)
@@ -180,6 +182,8 @@ def retrieve(args):
     vprint(f"  to location '{args.location}'")
 
     archive = _get_archive_path(args)
+    if not archive.is_file():
+        fatal(f"Artifact archive '{archive}' does not exist, cannot retrieve.")
 
     # Ensure the target directory exists
     location = args.location
@@ -201,9 +205,38 @@ def tag(args):
     vprint(f"  with new tag: '{args.new_tag}'")
 
     archive = _get_archive_path(args)
+    if not archive.is_file():
+        fatal(f"Artifact archive '{archive}' does not exist, cannot tag.")
 
     # Create the new tag
     _tag(tag_path(args.storage_root, args.namespace) / f"{args.name}-{args.new_tag}", archive)
+
+
+def meta(args):
+    """Get and set (optional) metadata of an artifact."""
+
+    vprint(f"Meta-data on artifact '{args.name}'")
+
+    meta_file = _get_meta_data_path(args)
+    if not meta_file.is_file():
+        fatal(f"Metadata file '{meta_file}' does not exist, cannot read or modify metadata.")
+
+    vprint(f"  reading metadata: '{meta_file}'")
+
+    meta = ArtifactMetaData()
+    meta.load(meta_file)
+
+    for item in args.key_value:
+        try:
+            key, value = meta.add_kv_string(item)
+            vprint(f"  handled: '{item}' -> '{key}' = '{value}'")
+        except ValueError as e:
+            fatal(e)
+        except KeyError as e:
+            fatal(e)
+
+    print(meta.dump(show_hidden=args.show_hidden))
+    meta.save(meta_file)
 
 
 def main(argv=None):
@@ -263,6 +296,21 @@ def main(argv=None):
     parser_tag.add_argument("new_tag", type=str, help="new tag name to assign to the artifact")
 
     parser_tag.set_defaults(func=tag)
+
+    parser_meta = subparsers.add_parser("meta", help="Retrieve metadata of an artifact")
+
+    group = parser_meta.add_mutually_exclusive_group(required=True)
+    group.add_argument("-t", "--tag", type=str, help="tag artifact with a tag name (e.g. latest)")
+    group.add_argument("-r", "--revision", type=str, help="revision/unique-id of artifact to tag")
+
+    parser_meta.add_argument("-H", "--show-hidden", action="store_true", help="show hidden metadata " \
+                                                                              "keys (starting with __)")
+    parser_meta.add_argument("namespace", type=str, help="namespace of the artifact")
+    parser_meta.add_argument("name", type=str, help="name of artifact")
+    parser_meta.add_argument("key_value", type=str, nargs='*', help="set, replace or delete metadata key-value pairs" \
+                                                                    "like key=value or key= (to delete)")
+
+    parser_meta.set_defaults(func=meta)
 
     args = parser.parse_args(argv)
     global _verbose

@@ -85,6 +85,12 @@ artifact-store tag --revision <revision> <namespace> <artifact-name> <tag>
 
 can be used to assign tags to revisions or create new tags from existing ones.
 
+```bash
+artifact-store meta --tag <tag>|--revision <rev> <namespace> <artifact-name> ["<key>=<value>" ...]
+```
+can be used to set meta-data key-value-pairs. The command always returns the current
+meta-data JSON-formatted.
+
 ## Development
 
 Create a virtual environment and install the dependencies:
