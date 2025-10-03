@@ -17,12 +17,12 @@ _verbose = False
 def vprint(*args, **kwargs):
     """Prints the arguments if verbose is True."""
     if _verbose:
-        print(*args, **kwargs)
+        print(*args, **kwargs, file=sys.stderr)
 
 
 def fatal(*args, **kwargs):
     """Prints the arguments and raises."""
-    print(*args, **kwargs)
+    print(*args, **kwargs, file=sys.stderr)
     raise SystemExit(1)
 
 

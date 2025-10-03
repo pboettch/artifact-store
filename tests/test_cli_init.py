@@ -47,5 +47,5 @@ def test_cli_no_command(fs):
 def test_verbose_flag(fs, capsys):
     main(["-s", "/artifact-store", "-v", "init"])
     captured = capsys.readouterr()
-    assert captured.out == "Initializing artifact store at '/artifact-store'\n" \
+    assert captured.err == "Initializing artifact store at '/artifact-store'\n" \
            "Artifact store initialized at '/artifact-store'\n"
