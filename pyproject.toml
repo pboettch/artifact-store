@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "artifact-filesystem-store"
-version = "0.1.1"
+version = "0.2.0"
 description = "A tool for storing and retrieving artifacts to a local filesystem backend storage."
 urls = { "Homepage" = "https://github.com/pboettch/artifact-store" }
 authors = [
@@ -44,7 +44,7 @@ dev = [
 ]
 
 [tool.bumpver]
-current_version = "0.1.1"
+current_version = "0.2.0"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message  = "Bump version {old_version} -> {new_version}"
 tag_message = "{new_version}"
