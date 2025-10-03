@@ -91,6 +91,30 @@ artifact-store meta --tag <tag>|--revision <rev> <namespace> <artifact-name> ["<
 can be used to set meta-data key-value-pairs. The command always returns the current
 meta-data JSON-formatted.
 
+The command
+
+```bash
+artifact-store list -n
+```
+
+lists all namespaces,
+
+```bash
+artifact-store list -a <namespace>
+```
+lists all artifacts in a namespace,
+
+```bash
+artifact-store list -r <namespace> <artifact-name>
+```
+lists all revisions of an artifact and
+
+```bash
+artifact-store list -t <namespace> <artifact-name>
+```
+lists all tags of an artifact.
+
+
 ## Development
 
 Create a virtual environment and install the dependencies:

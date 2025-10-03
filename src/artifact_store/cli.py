@@ -27,6 +27,10 @@ def fatal(*args, **kwargs):
 
 
 _MAGIC_FILE_NAME = ".artifact_store"
+_ARTIFACT_DIR_NAME = "artifacts"
+_TAG_DIR_NAME = "tags"
+_ARCHIVE_FILE_EXTENSION = ".tar.xz"
+_META_FILE_EXTENSION = ".meta.json"
 
 
 def check_artifact_store(storage_path: Path):
@@ -54,12 +58,12 @@ def init(args):
 
 def artifact_path(storage_root: Path, namespace: Path) -> Path:
     """Returns the path to the package directory for the current namespace."""
-    return storage_root / namespace / 'artifacts'
+    return storage_root / namespace / _ARTIFACT_DIR_NAME
 
 
 def tag_path(storage_root: Path, namespace: Path) -> Path:
     """Returns the path to the package directory for the current namespace."""
-    return storage_root / namespace / 'tags'
+    return storage_root / namespace / _TAG_DIR_NAME
 
 
 def tar_filter(exclude_globs, tarinfo):
@@ -95,7 +99,7 @@ def _get_artifact_location(args, use_tag=True) -> Path:
         if not tag_link.is_symlink():
             fatal(f"Tagged artifact '{tag_link}' is not a symlink, cannot retrieve.")
         archive = tag_link.resolve()
-        path = archive.with_suffix('')  # remove .tar.xz suffix, if it was an archive
+        path = archive.with_suffix('')  # remove the archive file extension if it was an archive
 
     vprint(f"  artifact location: '{path}'")
     vprint(f"  identified artifact location: {path}")
@@ -105,12 +109,12 @@ def _get_artifact_location(args, use_tag=True) -> Path:
 
 def _get_meta_data_path(args, use_tag=True) -> Path:
     """Helper function to get the metadata path based on args."""
-    return _get_artifact_location(args, use_tag=use_tag).with_suffix('.meta.json')
+    return _get_artifact_location(args, use_tag=use_tag).with_suffix(_META_FILE_EXTENSION)
 
 
 def _get_archive_path(args, use_tag=True) -> Path:
     """Helper function to get the archive path based on args."""
-    return _get_artifact_location(args, use_tag=use_tag).with_suffix('.tar.xz')
+    return _get_artifact_location(args, use_tag=use_tag).with_suffix(_ARCHIVE_FILE_EXTENSION)
 
 
 def store(args):
@@ -148,7 +152,7 @@ def store(args):
     if args.copy:
         raise NotImplementedError("Copying files is not implemented yet.")
     else:
-        archive = artifact_location.with_suffix(".tar.xz")  # no check needed - checked above
+        archive = artifact_location.with_suffix(_ARCHIVE_FILE_EXTENSION)  # no check needed - checked above
 
         # Expand all include globs
         paths = set()
@@ -194,7 +198,7 @@ def retrieve(args):
     with tarfile.open(archive, "r:xz") as tar:
         if sys.version_info >= (3, 12):
             tar.extractall(path=location, filter='fully_trusted')
-        else:
+        else:  # pragma: no cover
             tar.extractall(path=location)
 
 
@@ -237,6 +241,61 @@ def meta(args):
 
     print(meta.dump(show_hidden=args.show_hidden))
     meta.save(meta_file)
+
+
+def list_command(args):
+    """List namespaces, artifacts, revisions or tags."""
+    check_artifact_store(args.storage_root)
+
+    if args.namespaces:
+        # namespaces are directories containing an _ARTIFACT_DIR_NAME subdirectory
+        namespaces = [str(p.relative_to(args.storage_root))
+                      for p in args.storage_root.rglob('*')
+                      if p.is_dir() and (p / _ARTIFACT_DIR_NAME).is_dir()]
+        print('\n'.join(sorted(namespaces)))
+
+    elif args.artifacts:
+        artifact_dir = args.storage_root / args.artifacts / _ARTIFACT_DIR_NAME
+        if not artifact_dir.is_dir():
+            fatal(f"Namespace '{args.artifacts}' does not exist in the artifact store.")
+
+        # artifacts are files or directories having a meta-file in the same directory with the same name
+        artifacts = [str(p.relative_to(artifact_dir)).rsplit('-', 1)[0]
+                     for p in artifact_dir.glob('*')
+                     if Path(str(p).replace(_ARCHIVE_FILE_EXTENSION, "")).with_suffix(_META_FILE_EXTENSION).is_file()]
+        print('\n'.join(sorted(set(artifacts))))
+
+    elif args.revisions:
+        ns, artifact = args.revisions
+        artifact_dir = args.storage_root / ns / _ARTIFACT_DIR_NAME
+        if not artifact_dir.is_dir():
+            fatal(f"Namespace '{ns}' does not exist in the artifact store.")
+
+        # revisions are files or directories having a meta-file in the same directory with the same name
+        # the revision is the part after the last '-' in the name, without the archive extension
+        revisions = [str(p.relative_to(artifact_dir)).replace(_ARCHIVE_FILE_EXTENSION, "").rsplit('-', 1)[1]
+                     for p in artifact_dir.glob(f'{artifact}-*')
+                     if Path(str(p).replace(_ARCHIVE_FILE_EXTENSION, "")).with_suffix(_META_FILE_EXTENSION).is_file()
+                     and p.is_dir() or str(p).endswith(_ARCHIVE_FILE_EXTENSION)]
+        if not revisions:
+            fatal(f"No revisions found for artifact '{artifact}' in namespace '{ns}'.")
+
+        print('\n'.join(sorted(revisions)))
+
+    elif args.tags:
+        ns, artifact = args.tags
+        tags_dir = args.storage_root / ns / _TAG_DIR_NAME
+        if not tags_dir.is_dir():
+            fatal(f"Namespace '{ns}' does not exist in the artifact store.")
+
+        # revisions are files or directories having a meta-file in the same directory with the same name
+        # the revision is the part after the last '-' in the name, without the archive extension
+        tags = [str(p.relative_to(tags_dir)).rsplit('-', 1)[1]
+                for p in tags_dir.glob(f'{artifact}-*')
+                if p.is_symlink()]
+        print('\n'.join(sorted(tags)))
+    else:  # pragma: no cover
+        pass
 
 
 def main(argv=None):
@@ -312,6 +371,26 @@ def main(argv=None):
 
     parser_meta.set_defaults(func=meta)
 
+    parser_list = subparsers.add_parser("list", help="List all available projects, artifacts, revisions and tags")
+
+    group = parser_list.add_mutually_exclusive_group(required=True)
+
+    # -n: list namespaces
+    group.add_argument("-n", "--namespaces", action="store_true", help="List all namespaces")
+
+    # -a <namespace>: list artifacts in a namespace
+    group.add_argument("-a", "--artifacts", metavar="NAMESPACE", help="List all artifacts in a namespace")
+
+    # -r <namespace> <artifact-name>: list revisions of an artifact
+    group.add_argument("-r", "--revisions", nargs=2, metavar=("NAMESPACE", "ARTIFACT"),
+                       help="List revisions of an artifact")
+
+    # -t <namespace> <artifact-name>: list tags of an artifact
+    group.add_argument("-t", "--tags", nargs=2, metavar=("NAMESPACE", "ARTIFACT"),
+                       help="List tags of an artifact")
+
+    parser_list.set_defaults(func=list_command)
+
     args = parser.parse_args(argv)
     global _verbose
     _verbose = args.verbose
@@ -324,5 +403,5 @@ def main(argv=None):
     args.func(args)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main(sys.argv[1:])
