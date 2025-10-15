@@ -90,7 +90,7 @@ def test_cli_meta_add_new_kv(init_fs, capsys):
 def test_cli_meta_get_internal_keys(init_fs, capsys):
     main(["meta", "-H", "-r", "1", "project/a", "artifact1"])
 
-    expected_meta_filename = "/artifact-store/project/a/artifacts/artifact1-1.meta.json"
+    expected_meta_filename = "/artifact-store/project/a/artifacts/artifact1__1.meta.json"
     meta = json.loads(open(expected_meta_filename).read())
 
     expected = f"""{{

@@ -40,10 +40,10 @@ def init_fs(fs, monkeypatch):
 def test_cli_store_one_artifact_roundtrip(init_fs):
     main(["store", "-r", "1", "project/a", "artifact1", "/data"])
 
-    expected_filename = "/artifact-store/project/a/artifacts/artifact1-1.tar.xz"
+    expected_filename = "/artifact-store/project/a/artifacts/artifact1__1.tar.xz"
     assert os.path.isfile(expected_filename)
 
-    expected_meta_filename = "/artifact-store/project/a/artifacts/artifact1-1.meta.json"
+    expected_meta_filename = "/artifact-store/project/a/artifacts/artifact1__1.meta.json"
     assert os.path.isfile(expected_meta_filename)
 
     tar = tarfile.open(expected_filename)
@@ -61,8 +61,8 @@ def test_cli_store_one_artifact_and_check_complete_store_root(init_fs):
             files.append(os.path.join(root, f))
     assert sorted(files) == sorted([
         "/artifact-store/.artifact_store",
-        "/artifact-store/project/a/artifacts/artifact1-1.meta.json",
-        "/artifact-store/project/a/artifacts/artifact1-1.tar.xz"])
+        "/artifact-store/project/a/artifacts/artifact1__1.meta.json",
+        "/artifact-store/project/a/artifacts/artifact1__1.tar.xz"])
 
 
 def test_cli_store_one_artifact_and_tag_latest(init_fs):
@@ -71,9 +71,9 @@ def test_cli_store_one_artifact_and_tag_latest(init_fs):
           "-r", "1",
           "project/a", "artifact1", "/data"])
 
-    assert os.path.islink("/artifact-store/project/a/tags/artifact1-latest")
+    assert os.path.islink("/artifact-store/project/a/tags/artifact1__latest")
     assert os.path.realpath(
-        "/artifact-store/project/a/tags/artifact1-latest") == "/artifact-store/project/a/artifacts/artifact1-1.tar.xz"
+        "/artifact-store/project/a/tags/artifact1__latest") == "/artifact-store/project/a/artifacts/artifact1__1.tar.xz"
 
     files = []
     for root, _, filenames in os.walk("/artifact-store"):
@@ -81,9 +81,9 @@ def test_cli_store_one_artifact_and_tag_latest(init_fs):
             files.append(os.path.join(root, f))
     assert sorted(files) == sorted([
         "/artifact-store/.artifact_store",
-        "/artifact-store/project/a/artifacts/artifact1-1.meta.json",
-        "/artifact-store/project/a/artifacts/artifact1-1.tar.xz",
-        "/artifact-store/project/a/tags/artifact1-latest",
+        "/artifact-store/project/a/artifacts/artifact1__1.meta.json",
+        "/artifact-store/project/a/artifacts/artifact1__1.tar.xz",
+        "/artifact-store/project/a/tags/artifact1__latest",
     ])
 
 
@@ -93,36 +93,36 @@ def test_cli_store_one_artifact_and_tag_and_retag_latest(init_fs):
           "-r", "1",
           "project/a", "artifact1", "/data"])
 
-    assert os.path.islink("/artifact-store/project/a/tags/artifact1-latest")
-    assert os.path.realpath("/artifact-store/project/a/tags/artifact1-latest") == \
-           "/artifact-store/project/a/artifacts/artifact1-1.tar.xz"
+    assert os.path.islink("/artifact-store/project/a/tags/artifact1__latest")
+    assert os.path.realpath("/artifact-store/project/a/tags/artifact1__latest") == \
+           "/artifact-store/project/a/artifacts/artifact1__1.tar.xz"
 
     main(["store",
           "-t", "latest",
           "-r", "2",
           "project/a", "artifact1", "/data"])
 
-    assert os.path.islink("/artifact-store/project/a/tags/artifact1-latest")
-    assert os.path.realpath("/artifact-store/project/a/tags/artifact1-latest") == \
-           "/artifact-store/project/a/artifacts/artifact1-2.tar.xz"
+    assert os.path.islink("/artifact-store/project/a/tags/artifact1__latest")
+    assert os.path.realpath("/artifact-store/project/a/tags/artifact1__latest") == \
+           "/artifact-store/project/a/artifacts/artifact1__2.tar.xz"
 
     files = []
     for root, _, filenames in os.walk("/artifact-store"):
         for f in filenames:
             files.append(os.path.join(root, f))
     assert sorted(files) == ["/artifact-store/.artifact_store",
-                             "/artifact-store/project/a/artifacts/artifact1-1.meta.json",
-                             "/artifact-store/project/a/artifacts/artifact1-1.tar.xz",
-                             "/artifact-store/project/a/artifacts/artifact1-2.meta.json",
-                             "/artifact-store/project/a/artifacts/artifact1-2.tar.xz",
-                             "/artifact-store/project/a/tags/artifact1-latest",
+                             "/artifact-store/project/a/artifacts/artifact1__1.meta.json",
+                             "/artifact-store/project/a/artifacts/artifact1__1.tar.xz",
+                             "/artifact-store/project/a/artifacts/artifact1__2.meta.json",
+                             "/artifact-store/project/a/artifacts/artifact1__2.tar.xz",
+                             "/artifact-store/project/a/tags/artifact1__latest",
                              ]
 
 
 def test_cli_store_check_default_metadata(init_fs):
     main(["store", "-r", "1", "project/a", "artifact1", "/data"])
 
-    expected_meta_filename = "/artifact-store/project/a/artifacts/artifact1-1.meta.json"
+    expected_meta_filename = "/artifact-store/project/a/artifacts/artifact1__1.meta.json"
     assert os.path.isfile(expected_meta_filename)
 
     with open(expected_meta_filename, "r") as f:
@@ -136,7 +136,7 @@ def test_cli_store_check_default_metadata(init_fs):
 def test_cli_store_add_metadata(init_fs):
     main(["store", "-r", "1", "-m", "key1=value1", "-m", "key2=value2", "project/a", "artifact1", "/data"])
 
-    expected_meta_filename = "/artifact-store/project/a/artifacts/artifact1-1.meta.json"
+    expected_meta_filename = "/artifact-store/project/a/artifacts/artifact1__1.meta.json"
     assert os.path.isfile(expected_meta_filename)
 
     with open(expected_meta_filename, "r") as f:
@@ -161,7 +161,7 @@ def test_cli_store_exclude_patterns(init_fs):
           "--exclude", "*/a/**/file.md",  # exclude all file.md in a/ and subdirs
           "project", "artifact1", "/data"])
 
-    expected_filename = "/artifact-store/project/artifacts/artifact1-1.tar.xz"
+    expected_filename = "/artifact-store/project/artifacts/artifact1__1.tar.xz"
     tar = tarfile.open(expected_filename)
     print(sorted(tar.getnames()))
     assert sorted(tar.getnames()) == ["data",
@@ -181,7 +181,7 @@ def test_cli_store_path_globs(init_fs):
           "-r", "1",
           "project", "artifact1", "data/**/file.md"])
 
-    expected_filename = "/artifact-store/project/artifacts/artifact1-1.tar.xz"
+    expected_filename = "/artifact-store/project/artifacts/artifact1__1.tar.xz"
     tar = tarfile.open(expected_filename)
 
     assert sorted(tar.getnames()) == ['data/a/a/a/file.md',
@@ -229,3 +229,15 @@ def test_cli_store_copy_is_not_implemented(init_fs):
         main(["store", "-r", "1", "-c", "project/a", "artifact1", "/data"])
     except NotImplementedError as e:
         assert str(e) == "Copying files is not implemented yet."
+
+
+def test_cli_store_artifact_using_illegal_string_for_rev_or_tag(init_fs):
+    try:
+        main(["store", "-r", "1__1", "project/a", "artifact1", "/data"])
+    except SystemExit as e:
+        assert e.code == 1
+
+    try:
+        main(["store", "-r", "1", "-t", "illeg__al", "project/a", "artifact1", "/data"])
+    except SystemExit as e:
+        assert e.code == 1

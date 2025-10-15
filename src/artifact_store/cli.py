@@ -31,6 +31,7 @@ _ARTIFACT_DIR_NAME = "artifacts"
 _TAG_DIR_NAME = "tags"
 _ARCHIVE_FILE_EXTENSION = ".tar.xz"
 _META_FILE_EXTENSION = ".meta.json"
+_TAG_REV_SEPARATOR = "__"
 
 
 def check_artifact_store(storage_path: Path):
@@ -90,19 +91,18 @@ def _get_artifact_location(args, use_tag=True) -> Path:
 
     path = None
     if args.revision:
-        vprint(f"  retrieving revision: {args.revision}")
-        path = artifact_path(args.storage_root, args.namespace) / f"{args.name}-{args.revision}"
+        vprint(f"  using revision: {args.revision}")
+        path = artifact_path(args.storage_root, args.namespace) / f"{args.name}{_TAG_REV_SEPARATOR}{args.revision}"
 
     if use_tag and args.tag:
-        vprint(f"  retrieving tag: {args.tag}")
-        tag_link = tag_path(args.storage_root, args.namespace) / f"{args.name}-{args.tag}"
+        vprint(f"  using: {args.tag}")
+        tag_link = tag_path(args.storage_root, args.namespace) / f"{args.name}{_TAG_REV_SEPARATOR}{args.tag}"
         if not tag_link.is_symlink():
             fatal(f"Tagged artifact '{tag_link}' is not a symlink, cannot retrieve.")
         archive = tag_link.resolve()
         path = archive.with_suffix('')  # remove the archive file extension if it was an archive
 
     vprint(f"  artifact location: '{path}'")
-    vprint(f"  identified artifact location: {path}")
 
     return path
 
@@ -123,9 +123,13 @@ def store(args):
 
     vprint(f"Storing artifact '{args.name}'")
     vprint(f"  with globs: '{args.glob}'")
-    vprint(f"  setting revision: '{args.revision}'")
+    vprint(f"  using revision: '{args.revision}'")
     vprint(f"  linking tag: {args.tag}")
     vprint(f"  copying files: {args.copy}")
+
+    # check revision does not violate the separator rule
+    if _TAG_REV_SEPARATOR in args.revision:
+        fatal(f"Revision '{args.revision}' cannot contain '{_TAG_REV_SEPARATOR}'")
 
     # metadata file location
     meta_filename = _get_meta_data_path(args, use_tag=False)
@@ -176,7 +180,9 @@ def store(args):
         meta.save(meta_filename)
 
     if args.tag:
-        _tag(tag_path(args.storage_root, args.namespace) / f"{args.name}-{args.tag}", archive)
+        if _TAG_REV_SEPARATOR in args.tag:
+            fatal(f"Tag name '{args.tag}' cannot contain '{_TAG_REV_SEPARATOR}'")
+        _tag(tag_path(args.storage_root, args.namespace) / f"{args.name}{_TAG_REV_SEPARATOR}{args.tag}", archive)
 
 
 def retrieve(args):
@@ -213,7 +219,9 @@ def tag(args):
         fatal(f"Artifact archive '{archive}' does not exist, cannot tag.")
 
     # Create the new tag
-    _tag(tag_path(args.storage_root, args.namespace) / f"{args.name}-{args.new_tag}", archive)
+    if _TAG_REV_SEPARATOR in args.new_tag:
+        fatal(f"Tag name '{args.new_tag}' cannot contain '{_TAG_REV_SEPARATOR}'")
+    _tag(tag_path(args.storage_root, args.namespace) / f"{args.name}{_TAG_REV_SEPARATOR}{args.new_tag}", archive)
 
 
 def meta(args):
@@ -258,7 +266,7 @@ def list_command(args):
             fatal(f"Namespace '{args.artifacts}' does not exist in the artifact store.")
 
         # artifacts are files or directories having a meta-file in the same directory with the same name
-        artifacts = [str(p.relative_to(artifact_dir)).rsplit('-', 1)[0]
+        artifacts = [str(p.relative_to(artifact_dir)).rsplit(_TAG_REV_SEPARATOR, 1)[0]
                      for p in artifact_dir.glob('*')
                      if Path(str(p).replace(_ARCHIVE_FILE_EXTENSION, "")).with_suffix(_META_FILE_EXTENSION).is_file()]
         print('\n'.join(sorted(set(artifacts))))
@@ -270,11 +278,12 @@ def list_command(args):
             fatal(f"Namespace '{ns}' does not exist in the artifact store.")
 
         # revisions are files or directories having a meta-file in the same directory with the same name
-        # the revision is the part after the last '-' in the name, without the archive extension
-        revisions = [str(p.relative_to(artifact_dir)).replace(_ARCHIVE_FILE_EXTENSION, "").rsplit('-', 1)[1]
-                     for p in artifact_dir.glob(f'{artifact}-*')
-                     if Path(str(p).replace(_ARCHIVE_FILE_EXTENSION, "")).with_suffix(_META_FILE_EXTENSION).is_file()
-                     and p.is_dir() or str(p).endswith(_ARCHIVE_FILE_EXTENSION)]
+        # the revision is the part after the separator in the name, without the archive extension
+        revisions = [
+            str(p.relative_to(artifact_dir)).replace(_ARCHIVE_FILE_EXTENSION, "").rsplit(_TAG_REV_SEPARATOR, 1)[1]
+            for p in artifact_dir.glob(f'{artifact}{_TAG_REV_SEPARATOR}*')
+            if Path(str(p).replace(_ARCHIVE_FILE_EXTENSION, "")).with_suffix(_META_FILE_EXTENSION).is_file()
+               and p.is_dir() or str(p).endswith(_ARCHIVE_FILE_EXTENSION)]
         if not revisions:
             fatal(f"No revisions found for artifact '{artifact}' in namespace '{ns}'.")
 
@@ -286,10 +295,9 @@ def list_command(args):
         if not tags_dir.is_dir():
             fatal(f"Namespace '{ns}' does not exist in the artifact store.")
 
-        # revisions are files or directories having a meta-file in the same directory with the same name
-        # the revision is the part after the last '-' in the name, without the archive extension
-        tags = [str(p.relative_to(tags_dir)).rsplit('-', 1)[1]
-                for p in tags_dir.glob(f'{artifact}-*')
+        # tags are symlinks in the tag-directory of a namespace pointing to an artifact
+        tags = [str(p.relative_to(tags_dir)).rsplit(_TAG_REV_SEPARATOR, 1)[1]
+                for p in tags_dir.glob(f'{artifact}{_TAG_REV_SEPARATOR}*')
                 if p.is_symlink()]
         print('\n'.join(sorted(tags)))
     else:  # pragma: no cover
