@@ -15,6 +15,8 @@ def init_fs(fs, monkeypatch):
     main(["store", "-r", "2", "-t", "t1", "project/a", "artifact1", "/data"])
     main(["store", "-r", "1", "project/a", "artifact2", "/data"])
 
+    main(["store", "-r", "2", "-t", "tag-with-dash", "project/b", "a", "/data"])
+
     return fs
 
 
@@ -38,7 +40,7 @@ def test_cli_list_argument_combination_failures(init_fs, capsys, main_args):
 def test_cli_list_namespaces(init_fs, capsys):
     main(["list", "-n"])
     captured = capsys.readouterr()
-    assert captured.out.strip() == "project/a"
+    assert captured.out.strip() == "project/a\nproject/b"
 
 
 def test_cli_list_artifacts(init_fs, capsys):
@@ -87,3 +89,9 @@ def test_cli_list_tags_with_unknown_artifact(init_fs, capsys):
     main(["list", "-t", "project/a", "artifact3"])
     captured = capsys.readouterr()
     assert captured.out.strip() == ""
+
+
+def test_cli_list_with_tags_using_dash(init_fs, capsys):
+    main(["list", "-t", "project/b", "a"])
+    captured = capsys.readouterr()
+    assert captured.out.strip() == "tag-with-dash"
